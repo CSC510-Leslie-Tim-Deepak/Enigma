@@ -29,6 +29,8 @@ class Songs_Queue(metaclass=Singleton):
         """
         self._queue = []
         self._index = 0
+        self._dislikes = {}  # Tracks dislikes for songs: {song_name: dislike_count}
+
 
     @property
     def queue(self):
@@ -196,4 +198,28 @@ class Songs_Queue(metaclass=Singleton):
                     if (self._index < 0):
                         self._index = len(self.queue) - 1
                     return index
+                
+    ## ADD dislike feature
+    def add_dislike(self, song_name):
+        """
+        Increment dislike count for the given song.
+        """
+        if song_name not in self._dislikes:
+            self._dislikes[song_name] = 1
+        else:
+            self._dislikes[song_name] += 1
+
+    def get_dislikes(self, song_name):
+        """
+        Get the dislike count for a song.
+        """
+        return self._dislikes.get(song_name, 0)
+
+    def reset_dislikes(self, song_name):
+        """
+        Reset dislikes for a song when skipped or removed.
+        """
+        if song_name in self._dislikes:
+            del self._dislikes[song_name]
+
         return -1
