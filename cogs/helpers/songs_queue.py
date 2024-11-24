@@ -67,7 +67,7 @@ class Songs_Queue(metaclass=Singleton):
         Returns:
             str: The song at the given index in the queue, or -1 if the index is out of bounds
         """
-
+        
         if idx < 0 or idx >= len(self.queue):
             return -1
         song = self.queue[idx]
@@ -84,8 +84,8 @@ class Songs_Queue(metaclass=Singleton):
         """
         This function returns the next song in the queue
         """
-
-        print(self.queue)
+        
+        
         if (self._index == len(self.queue) - 1):
             self._index = 0
         else:
@@ -154,7 +154,6 @@ class Songs_Queue(metaclass=Singleton):
         Parameters:
             song_name(str | list[str]): The name of the song to be added to the queue, or a list of song names to be added to the queue
         """
-
         if isinstance(songs, list) and not isinstance(songs, tuple):
             for song in songs:
                 if isinstance(song, tuple):
