@@ -53,42 +53,7 @@ class Queue(commands.Cog):
             if index != 0:
                 bot_message += "\n\nAlready Played: "
             for i in range(len(queue)):
-                def is_url(input_str):
-                    return input_str.startswith("http://") or input_str.startswith("https://")
-                if is_url(queue[i][0]):
-                    site_name = "Direct URL"
-                    query = queue[i][0]
-                else:
-                    query = " ".join(queue[i][0].split()[1:])  # Remove the prefix
-
-                    if queue[i][0].split(" ", 1)[0] == "yt":
-                        print(type(queue[i][0].split(" ", 1)[0]))
-                        site_name = "YouTube"
-                        search_prefix = "ytsearch"
-                    else:
-                        site_name = "SoundCloud"
-                        search_prefix = 'scsearch'
-
-                ydl_opts = {
-                    'format': 'bestaudio',
-                    'noplaylist': True,
-                    'source_address': '0.0.0.0',  # Prevent IPv6 issues
-                }   
-                ydl_opts['default_search'] = 'ytsearch'
-
-                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                    try:
-                        # Extract info from the URL or perform the search
-                        info = ydl.extract_info(query, download=False)
-                        if 'entries' in info:
-                            info = info['entries'][0]  # Get the first result from the search
-                        url = info['url']
-                        title = info.get('title', 'Unknown Title')
-                    except Exception as e:
-                        await ctx.send(f"An error occurred: {e}")
-                        return
-                song_name = f"{title} from {site_name}"
-
+                title = self.songs_queue.queue[i][4] if self.songs_queue.queue[i][4] else self.songs_queue.queue[i][0]
                 if i < index:
                     # + " by " + str.title(queue[i][1])
                     #bot_message += "\n" + \
@@ -96,13 +61,13 @@ class Queue(commands.Cog):
                     #    ". " + str.title(queue[i][0])
                     bot_message += "\n" + \
                         str(len(self.songs_queue.queue) - index + i) + \
-                        ". " + song_name
+                        ". " + title
                     
                 elif i == index:
                     #bot_message += "\n\n🔊 Currently Playing: \n" + "     " + \
                      #   str.title(
                       #      queue[i][0])  # + " by " + str.title(queue[i][1])
-                    bot_message += "\n\n🔊 Currently Playing: \n" + "     " + song_name
+                    bot_message += "\n\n🔊 Currently Playing: \n" + "     " + title
                     
                     if index != len(self.songs_queue.queue) - 1:
                         bot_message += "\n\nUp Next: "
@@ -111,7 +76,7 @@ class Queue(commands.Cog):
                     #bot_message += "\n" + \
                      #   str(i - index) + ". " + str.title(queue[i][0])
                      bot_message += "\n" + \
-                        str(i - index) + ". " + song_name
+                        str(i - index) + ". " + title
             await ctx.send(bot_message)
 
     # TODO: update queue implementation
@@ -134,7 +99,7 @@ class Queue(commands.Cog):
         """
         user_message = str(ctx.message.content)
         song_name = " ".join(user_message.split()[1:])
-        self.songs_queue.add_to_queue(song_name)
+        self.songs_queue.add_to_queue([song_name])
         if self.songs_queue.get_len() == 1:
             ctx.command = self.bot.get_command("start")
             await self.bot.invoke(ctx)

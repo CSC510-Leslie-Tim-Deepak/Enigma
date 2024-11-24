@@ -62,16 +62,15 @@ class Songs(commands.Cog):
     def handle_play_next(self, ctx):
         if not self.manually_stopped and not ctx.voice_client.is_playing():
             asyncio.run_coroutine_threadsafe(self.play_song(
-                self.songs_queue.next_song(), ctx), self.bot.loop)
+                self.songs_queue.next_idx(), ctx), self.bot.loop)
 
-    async def play_song(self, song_name, ctx):
+    async def play_song(self, idx, ctx):
         """
         Helper function for playing song on the voice channel
 
         Parameters:
             song_name (str): The name of the song to play
         """
-
         voice_client = discord.utils.get(ctx.bot.voice_clients, guild=ctx.guild)
         if not voice_client:
             await ctx.send("Bot is not connected to a voice channel")
@@ -84,6 +83,8 @@ class Songs(commands.Cog):
 
         # Determine if the input is a URL
         def is_url(input_str):
+            if isinstance(input_str, tuple):
+                return False
             return input_str.startswith("http://") or input_str.startswith("https://")
         
         ydl_opts = {
@@ -91,46 +92,33 @@ class Songs(commands.Cog):
                 'noplaylist': True,
                 'source_address': '0.0.0.0',  # Prevent IPv6 issues
         }
-
-        # song_name = [sc asdad] or [https://asdad]
         
-        if is_url(song_name):
-            # Handle direct URL
-            query = song_name
-            url = song_name
-            site_name = "Direct URL"
-        else:
-            prefix = song_name.split(" ", 1)[0]
-            query = " ".join(song_name.split()[1:])  # Remove the prefix
-
-            # Handle search query
-            if prefix == "yt":  # Prefix-based YouTube search
-                search_prefix = 'ytsearch'
-                site_name = "YouTube"
-            elif prefix == "sc":  # Prefix-based SoundCloud search
-                search_prefix = 'scsearch'
-                site_name = "SoundCloud"
-            else:
-                await ctx.send("Specify a platform for searching! Use `yt` for YouTube or `sc` for SoundCloud.")
-                return
-
-            ydl_opts['default_search'] = search_prefix
+        ydl_opts['default_search'] = self.songs_queue.queue[idx][3]
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
                 # Extract info from the URL or perform the search
+                query = self.songs_queue.queue[idx][0]
+                if self.songs_queue.queue[idx][1] != "Unknown":
+                    query += " " + self.songs_queue.queue[idx][1]
                 info = ydl.extract_info(query, download=False)
                 if 'entries' in info:
                     info = info['entries'][0]  # Get the first result from the search
                 url = info['url']
-                title = info.get('title', 'Unknown Title')
+
+                title = info.get('title', 'Unknown Title') + " from " + self.songs_queue.queue[idx][2]
             except Exception as e:
                 await ctx.send(f"An error occurred: {e}")
                 return
                 
         # Play the audio using FFmpeg
-        voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: print(f"Finished playing: {e}"))
-        await ctx.send(f"Now playing: {title} from {site_name}")
+        voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: print(
+                    f"player error {e}") if e else self.handle_play_next(ctx))
+        # await ctx.send(f"Now playing: {title} from {self.songs_queue.queue[idx][2]}")
+        mutable_row = list(self.songs_queue.queue[idx])
+        mutable_row[4] = title
+        self.songs_queue.queue[idx] = tuple(mutable_row)
+        await ctx.send(f"Now playing: {title}")
         self.manually_stopped = False
 
         """
@@ -227,7 +215,7 @@ class Songs(commands.Cog):
         voice_client = discord.utils.get(
             ctx.bot.voice_clients, guild=ctx.guild)
         if voice_client.is_paused():
-            await voice_client.resume()
+            voice_client.resume()
         else:
             await ctx.send(
                 "The bot was not playing anything before this. Use play command"
@@ -242,7 +230,7 @@ class Songs(commands.Cog):
         if self.songs_queue.get_len() == 0:
             await ctx.send("No songs in the queue. Please add songs to the queue")
             return
-        await self.play_song(self.songs_queue.current_song(), ctx)
+        await self.play_song(self.songs_queue.current_idx(), ctx)
 
     @commands.command(
         name="play",
@@ -263,14 +251,11 @@ class Songs(commands.Cog):
             await ctx.send("Please provide an artist name")
             return
         
-        song = (search_prefix + " " + song_name, artist_name)
-
+        song = [(search_prefix + " " + song_name, artist_name)]
         self.songs_queue.clear()
         self.songs_queue.add_to_queue(song)
 
-        current_song = self.songs_queue.current_song()
-        print(f"Current song: {current_song}")
-        await self.play_song(current_song, ctx)
+        await self.play_song(self.songs_queue.current_idx(), ctx)
 
     @commands.command(name="pause", help="This command pauses the song")
     async def pause(self, ctx):
@@ -308,7 +293,7 @@ class Songs(commands.Cog):
 
         empty_queue = await self.songs_queue.handle_empty_queue(ctx)
         if not empty_queue:
-            await self.play_song(self.songs_queue.next_song(), ctx)
+            await self.play_song(self.songs_queue.next_idx(), ctx)
 
     @commands.command(name="prev", aliases=["prev_song"], help="To play previous song in queue")
     async def prev(self, ctx):
@@ -318,7 +303,7 @@ class Songs(commands.Cog):
 
         empty_queue = await self.songs_queue.handle_empty_queue(ctx)
         if not empty_queue:
-            await self.play_song(self.songs_queue.prev_song(), ctx)
+            await self.play_song(self.songs_queue.prev_idx(), ctx)
 
     # TODO: update queue implementation
 
@@ -332,7 +317,7 @@ class Songs(commands.Cog):
         voice_client = ctx.message.guild.voice_client
         if not empty_queue and voice_client.is_playing():
             voice_client.stop()
-        await self.play_song(self.songs_queue.current_song, ctx)
+        await self.play_song(self.songs_queue.current_idx(), ctx)
 
     @commands.command(
         name="poll_old",
@@ -375,7 +360,7 @@ class Songs(commands.Cog):
 
         self.songs_queue.clear()
         self.songs_queue.add_to_queue(recommended_songs)
-        await self.play_song(self.songs_queue.current_song(), ctx)
+        await self.play_song(self.songs_queue.current_idx(), ctx)
 
     @commands.command(name='mood', help='Recommend songs based on your mood or activity')
     async def mood_recommend(self, ctx):
@@ -446,77 +431,7 @@ class Songs(commands.Cog):
         # Add recommendations to queue and play.
         self.songs_queue.clear()
         self.songs_queue.add_to_queue(recommended_songs)
-        await self.play_song(self.songs_queue.current_song(), ctx)
-
-    @commands.command(
-        name="play_from_query",
-        help="Play a song using a URL or by searching YouTube/SoundCloud. Specify `yt` or `sc` for search."
-    )
-    async def play_from_query(self, ctx, *, query: str = None):
-        """
-        Function for playing a song from URL or by searching on YouTube or SoundCloud.
-
-        Parameters:
-            query (str): The song name, artist name, or URL to play.
-        """
-
-        voice_client = discord.utils.get(ctx.bot.voice_clients, guild=ctx.guild)
-        if not voice_client:
-            await ctx.send("The bot is not connected to a voice channel. Use `!join` first!")
-            return
-
-        if not query:  # Check if no query was provided
-            await ctx.send("You need to provide a song name or URL! Example: `!play_from_query yt lofi chill` or `!play_from_query https://...`")
-            return
-
-        # Determine if the input is a URL
-        def is_url(input_str):
-            return input_str.startswith("http://") or input_str.startswith("https://")
-
-        ydl_opts = {
-            'format': 'bestaudio',
-            'noplaylist': True,
-            'source_address': '0.0.0.0',  # Prevent IPv6 issues
-        }
-
-        if is_url(query):
-            # Handle direct URL
-            url = query
-            site_name = "Direct URL"
-        else:
-            # Handle search query
-            if query.startswith("yt "):  # Prefix-based YouTube search
-                search_prefix = 'ytsearch'
-                query = query[3:]  # Remove the "yt " prefix
-                site_name = "YouTube"
-            elif query.startswith("sc "):  # Prefix-based SoundCloud search
-                search_prefix = 'scsearch'
-                query = query[3:]  # Remove the "sc " prefix
-                site_name = "SoundCloud"
-            else:
-                await ctx.send("Specify a platform for searching! Use `yt` for YouTube or `sc` for SoundCloud.")
-                return
-
-            ydl_opts['default_search'] = search_prefix
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                # Extract info from the URL or perform the search
-                info = ydl.extract_info(query, download=False)
-                if 'entries' in info:
-                    info = info['entries'][0]  # Get the first result from the search
-                url = info['url']
-                title = info.get('title', 'Unknown Title')
-            except Exception as e:
-                await ctx.send(f"An error occurred: {e}")
-                return
-
-        # Play the audio using FFmpeg
-        voice_client.stop()
-        voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: print(f"Finished playing: {e}"))
-        await ctx.send(f"Now playing: {title} from {site_name}")
-
-
+        await self.play_song(self.songs_queue.current_idx(), ctx)
 
 async def setup(client: discord.Client):
     """
