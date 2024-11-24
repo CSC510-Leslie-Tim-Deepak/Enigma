@@ -142,7 +142,11 @@ class Recommender(commands.Cog):
 
         # Get the recommendations
         recommendations = recommend(user_input)
+        for i in range(len(recommendations)):
+            recommendations[i] = ("yt " + recommendations[i][0], recommendations[i][1])
+            
 
+        
         # Send the recommendations to the user
         recommend_message = "Here are some songs you may like based on your preferences:\n\n"
         for song, artist in recommendations:
