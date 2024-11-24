@@ -142,7 +142,7 @@ class Recommender(commands.Cog):
 
         # Get the recommendations
         recommendations = recommend(user_input)
-
+        
         # Send the recommendations to the user
         recommend_message = "Here are some songs you may like based on your preferences:\n\n"
         for song, artist in recommendations:
@@ -167,6 +167,10 @@ class Recommender(commands.Cog):
         for reaction in self.emoji_list[:3]:
             await message.add_reaction(reaction)
 
+        # add yt prefix
+        for i in range(len(recommendations)):
+            recommendations[i] = ("yt " + recommendations[i][0], recommendations[i][1])
+
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in self.emoji_list[:3]
         # wait for the user's response
@@ -177,13 +181,18 @@ class Recommender(commands.Cog):
                 # Add the songs to the end of the queue
                 await ctx.send("Adding the songs to the end of the queue.")
                 self.queue.add_to_queue(recommendations)
-                await ctx.send(f"Songs added to the queue. Current queue: {self.queue.queue}\nStart playback with the !start command.")
+                await ctx.send("Songs added to the queue.\nCurrent queue: ")
+                for i in range(len(self.queue.queue)):
+                    await ctx.send(f"{i+1}. {self.queue.queue[i][0]}")
+                await ctx.send("Start playback with the !start command.")
             elif reaction.emoji == self.emoji_list[1]:
                 # Clear the queue and add the songs
                 await ctx.send("Clearing the queue and adding the songs.")
                 self.queue.clear()
                 self.queue.add_to_queue(recommendations)
-                await ctx.send(f"Songs added to the queue. Current queue: {self.queue.queue}\nStart playback with the !start command.")
+                for i in range(len(self.queue.queue)):
+                    await ctx.send(f"{i+1}. {self.queue.queue[i][0]}")
+                await ctx.send("Start playback with the !start command.")
             elif reaction.emoji == self.emoji_list[2]:
                 # Cancel the operation
                 await ctx.send("Operation cancelled.")

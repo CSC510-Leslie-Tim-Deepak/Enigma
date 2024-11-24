@@ -64,6 +64,7 @@ async def on_ready():
     # voice_channel = client.get_channel(VOICE_CHANNEL_ID)
 
     channel = discord.utils.get(bot.get_all_channels(), name="General")
+    
 
     if channel is not None:
         bot_channel = discord.utils.get(bot.voice_clients, guild=channel.guild)

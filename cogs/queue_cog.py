@@ -5,7 +5,7 @@ A cog that handles the queue commands for the bot.
 from discord.ext import commands
 from cogs.helpers.songs_queue import Songs_Queue
 import asyncio
-
+import yt_dlp as youtube_dl
 
 class Queue(commands.Cog):
     """
@@ -53,21 +53,30 @@ class Queue(commands.Cog):
             if index != 0:
                 bot_message += "\n\nAlready Played: "
             for i in range(len(queue)):
+                title = self.songs_queue.queue[i][4] if self.songs_queue.queue[i][4] else self.songs_queue.queue[i][0]
                 if i < index:
                     # + " by " + str.title(queue[i][1])
+                    #bot_message += "\n" + \
+                    #    str(len(self.songs_queue.queue) - index + i) + \
+                    #    ". " + str.title(queue[i][0])
                     bot_message += "\n" + \
                         str(len(self.songs_queue.queue) - index + i) + \
-                        ". " + str.title(queue[i][0])
+                        ". " + title
+                    
                 elif i == index:
-                    bot_message += "\n\n🔊 Currently Playing: \n" + "     " + \
-                        str.title(
-                            queue[i][0])  # + " by " + str.title(queue[i][1])
+                    #bot_message += "\n\n🔊 Currently Playing: \n" + "     " + \
+                     #   str.title(
+                      #      queue[i][0])  # + " by " + str.title(queue[i][1])
+                    bot_message += "\n\n🔊 Currently Playing: \n" + "     " + title
+                    
                     if index != len(self.songs_queue.queue) - 1:
                         bot_message += "\n\nUp Next: "
                 elif i > index:
                     # + " by " + str.title(queue[i][1])
-                    bot_message += "\n" + \
-                        str(i - index) + ". " + str.title(queue[i][0])
+                    #bot_message += "\n" + \
+                     #   str(i - index) + ". " + str.title(queue[i][0])
+                     bot_message += "\n" + \
+                        str(i - index) + ". " + title
             await ctx.send(bot_message)
 
     # TODO: update queue implementation
@@ -88,10 +97,9 @@ class Queue(commands.Cog):
         """
         Function to add custom song to the queue
         """
-
         user_message = str(ctx.message.content)
-        song_name = user_message.split(" ", 1)[1]
-        self.songs_queue.add_to_queue(song_name)
+        song_name = " ".join(user_message.split()[1:])
+        self.songs_queue.add_to_queue([song_name])
         if self.songs_queue.get_len() == 1:
             ctx.command = self.bot.get_command("start")
             await self.bot.invoke(ctx)
@@ -133,7 +141,8 @@ class Queue(commands.Cog):
         if voice_client.is_playing():
             ctx.command = self.bot.get_command("stop")
             await self.bot.invoke(ctx)
-        self.songs_queue._queue = []
+        # self.songs_queue._queue = []
+        self.songs_queue.clear()
         await ctx.send("Queue cleared.")
 
 

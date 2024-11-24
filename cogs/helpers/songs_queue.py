@@ -2,7 +2,7 @@
 This file is responsible for maintaining the song queue
 """
 from random import shuffle
-
+from yt_dlp import YoutubeDL
 # Make a singleton class for the song queue
 
 
@@ -69,7 +69,7 @@ class Songs_Queue(metaclass=Singleton):
         Returns:
             str: The song at the given index in the queue, or -1 if the index is out of bounds
         """
-
+        
         if idx < 0 or idx >= len(self.queue):
             return -1
         song = self.queue[idx]
@@ -81,13 +81,13 @@ class Songs_Queue(metaclass=Singleton):
     def current_song(self):
         """Return the current song."""
         return self.get_song_at_index(self._index)
-
+    
     def next_song(self):
         """
         This function returns the next song in the queue
         """
-
-        print(self.queue)
+        
+        
         if (self._index == len(self.queue) - 1):
             self._index = 0
         else:
@@ -105,6 +105,28 @@ class Songs_Queue(metaclass=Singleton):
             self._index = len(self.queue) - 1
         val = self._index
         return self.get_song_at_index(val)
+    
+    def current_idx(self):
+        """Return the current index"""
+        return self._index
+    
+    def next_idx(self):
+        """Return the index of the next song"""
+        if (self._index == len(self.queue) - 1):
+            self._index = 0
+        else:
+            self._index += 1
+        return self._index
+    
+    def prev_idx(self):
+        """
+        This function returns the index of the previous song in the queue
+        """
+
+        self._index -= 1
+        if (self._index < 0):
+            self._index = len(self.queue) - 1
+        return self._index
 
     def move_song(self, song_name, idx):
         """
@@ -149,7 +171,7 @@ class Songs_Queue(metaclass=Singleton):
         shuffle(self.queue)
         self.queue.insert(self._index, element)
 
-    def add_to_queue(self, songs: str | list[str]):
+    def add_to_queue(self, songs: list[str]):
         """
         This function adds a song to the queue
 
@@ -157,17 +179,67 @@ class Songs_Queue(metaclass=Singleton):
             song_name(str | list[str]): The name of the song to be added to the queue, or a list of song names to be added to the queue
         """
 
-        if isinstance(songs, list) and not isinstance(songs, tuple):
-            for song in songs:
-                if isinstance(song, tuple):
-                    self.queue.append(song)
-                else:
-                    self.queue.append((song, "Unknown"))
-        else:
-            if (isinstance(songs, tuple)):
-                self.queue.append(songs)
+        def is_url(input_str):
+            if isinstance(input_str, tuple):
+                return False
+            return input_str.startswith("http://") or input_str.startswith("https://")
+        for song in songs:
+            if is_url(song):
+                site_name = "Direct URL"
+                search_prefix = "None"
+                song_name = song
+                artist = "Unknown"
             else:
-                self.queue.append((songs, "Unknown"))
+                if isinstance(song, tuple):
+                    song_name = " ".join(song[0].split()[1:])
+                    artist = song[1]
+
+                    if song[0].split(" ", 1)[0] == "yt":
+                        site_name = "YouTube"
+                        search_prefix = 'ytsearch'    
+                    elif song[0].split(" ", 1)[0] == "sc":  # Prefix-based SoundCloud searc
+                        site_name = "SoundCloud"
+                        search_prefix = "scsearch"
+                    else:
+                        print("Specify a platform for searching! Use `yt` for YouTube or `sc` for SoundCloud.")
+                        return
+                else:
+                    song_name = " ".join(song.split()[1:])
+                    artist = "Unknown"
+                    if song.split(" ", 1)[0] == "yt":
+                        site_name = "YouTube"
+                        search_prefix = 'ytsearch'
+                    elif song.split(" ", 1)[0] == "sc":  # Prefix-based SoundCloud searc
+                        site_name = "SoundCloud"
+                        search_prefix = "scsearch"
+                    else:
+                        print("Specify a platform for searching! Use `yt` for YouTube or `sc` for SoundCloud.")
+                        return
+            """
+            ydl_opts = {
+                'format': 'bestaudio',
+                'noplaylist': True,
+                'quiet': True,  # Suppress verbose output
+                'source_address': '0.0.0.0',  # Prevent IPv6 issues
+            }   
+            ydl_opts['default_search'] = search_prefix
+
+            with YoutubeDL(ydl_opts) as ydl:
+                try:
+                    # Extract info from the URL or perform the search
+                    query = f"{song_name} {artist}" if artist != "Unknown" else song_name
+
+                    info = ydl.extract_info(query, download=False)
+                    if 'entries' in info:
+                        info = info['entries'][0]  # Get the first result from the search
+                    url = info['url']
+                    title = info.get('title', 'Unknown Title') + " from " + site_name
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    return
+            """
+            title = ""
+            self.queue.append((song_name, artist, site_name, search_prefix, title))
 
     def remove_from_queue(self, song_name):
         """
