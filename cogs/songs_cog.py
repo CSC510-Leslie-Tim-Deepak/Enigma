@@ -11,6 +11,38 @@ from cogs.helpers.utils import searchSong, random_25
 from cogs.helpers.songs_queue import Songs_Queue
 import yt_dlp as youtube_dl
 
+## add dislike button feature
+from discord.ui import Button, View
+
+class DislikeButton(Button):
+    """
+    Button for disliking the current song.
+    """
+    def __init__(self, queue, threshold=3):
+        super().__init__(label="Dislike", style=discord.ButtonStyle.danger)
+        self.queue = queue
+        self.threshold = threshold
+
+    async def callback(self, interaction: discord.Interaction):
+        current_song = self.queue.current_song()
+        if current_song == -1:
+            await interaction.response.send_message("No song is currently playing.", ephemeral=True)
+            return
+
+        # Add dislike
+        self.queue.add_dislike(current_song)
+        dislike_count = self.queue.get_dislikes(current_song)
+
+        if dislike_count >= self.threshold:
+            await interaction.response.send_message(f"Song '{current_song}' skipped due to dislikes!")
+            self.queue.next_song()
+        else:
+            await interaction.response.send_message(f"'{current_song}' now has {dislike_count} dislikes.")
+
+
+
+
+
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                   'options': '-vn -filter:a "volume=0.25"'}
@@ -230,6 +262,15 @@ class Songs(commands.Cog):
         if self.songs_queue.get_len() == 0:
             await ctx.send("No songs in the queue. Please add songs to the queue")
             return
+
+        current_song = self.songs_queue.current_song()
+        # Create the dislike button
+        dislike_button = DislikeButton(self.songs_queue)
+        view = View()
+        view.add_item(dislike_button)
+
+        await ctx.send(f"Now playing: {current_song}", view=view)
+        #sc code
         await self.play_song(self.songs_queue.current_idx(), ctx)
 
     @commands.command(
