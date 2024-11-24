@@ -18,9 +18,10 @@ class DislikeButton(Button):
     """
     Button for disliking the current song.
     """
-    def __init__(self, queue, threshold=3):
+    def __init__(self, queue,bot, threshold=3):
         super().__init__(label="Dislike", style=discord.ButtonStyle.danger)
         self.queue = queue
+        self.bot = bot
         self.threshold = threshold
 
     async def callback(self, interaction: discord.Interaction):
@@ -35,7 +36,13 @@ class DislikeButton(Button):
 
         if dislike_count >= self.threshold:
             await interaction.response.send_message(f"Song '{current_song}' skipped due to dislikes!")
-            self.queue.next_song()
+            #self.queue.next_song()
+            # Dynamically create a context for the skip command
+            ctx = await self.bot.get_context(interaction.message)
+            ctx.command = self.bot.get_command("skip")
+
+            # Invoke the skip command
+            await self.bot.invoke(ctx)
         else:
             await interaction.response.send_message(f"'{current_song}' now has {dislike_count} dislikes.")
 
@@ -265,7 +272,7 @@ class Songs(commands.Cog):
 
         current_song = self.songs_queue.current_song()
         # Create the dislike button
-        dislike_button = DislikeButton(self.songs_queue)
+        dislike_button = DislikeButton(self.songs_queue, self.bot)
         view = View()
         view.add_item(dislike_button)
 
