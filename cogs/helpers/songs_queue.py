@@ -278,27 +278,4 @@ class Songs_Queue(metaclass=Singleton):
                 """
         return -1
                 
-    ## ADD dislike feature
-    def add_dislike(self, song_name):
-        """
-        Increment dislike count for the given song.
-        """
-        if song_name not in self._dislikes:
-            self._dislikes[song_name] = 1
-        else:
-            self._dislikes[song_name] += 1
-
-    def get_dislikes(self, song_name):
-        """
-        Get the dislike count for a song.
-        """
-        return self._dislikes.get(song_name, 0)
-
-    def reset_dislikes(self, song_name):
-        """
-        Reset dislikes for a song when skipped or removed.
-        """
-        if song_name in self._dislikes:
-            del self._dislikes[song_name]
-
-        return -1
+ 
