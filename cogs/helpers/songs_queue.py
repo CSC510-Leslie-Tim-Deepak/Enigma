@@ -251,13 +251,18 @@ class Songs_Queue(metaclass=Singleton):
         Returns:
             int: The index of the song that was removed from the queue, or -1 if the song was not found in the queue
         """
-
         for index, song in enumerate(self.queue):
             title = song[0]
-            artist = song[1]
             if title.upper() == song_name.upper():
-                if index != self.index:
+                if index > self.index:
                     return self.queue.pop(index)
+                else:
+                    self.queue.pop(index)
+                    self._index -= 1
+                    if (self._index < 0):
+                        self._index = max(0, len(self.queue) - 1)
+                    return index
+                """
                 elif index == 0:
                     # If the song to be removed is the first song in the queue
                     self.queue.pop(index)
@@ -270,6 +275,8 @@ class Songs_Queue(metaclass=Singleton):
                     if (self._index < 0):
                         self._index = len(self.queue) - 1
                     return index
+                """
+        return -1
                 
     ## ADD dislike feature
     def add_dislike(self, song_name):

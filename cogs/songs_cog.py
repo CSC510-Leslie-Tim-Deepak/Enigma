@@ -156,6 +156,7 @@ class Songs(commands.Cog):
         # await ctx.send(f"Now playing: {title} from {self.songs_queue.queue[idx][2]}")
         mutable_row = list(self.songs_queue.queue[idx])
         mutable_row[4] = title
+        mutable_row[0] = title
         self.songs_queue.queue[idx] = tuple(mutable_row)
         await ctx.send(f"Now playing: {title}")
         self.manually_stopped = False
@@ -275,8 +276,6 @@ class Songs(commands.Cog):
         dislike_button = DislikeButton(self.songs_queue, self.bot)
         view = View()
         view.add_item(dislike_button)
-
-        await ctx.send(f"Now playing: {current_song}", view=view)
         #sc code
         await self.play_song(self.songs_queue.current_idx(), ctx)
 

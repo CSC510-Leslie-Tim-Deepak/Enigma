@@ -90,7 +90,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.channel.name == "music":
+    if message.channel.name == "general1":
         await bot.process_commands(message)
 
 
